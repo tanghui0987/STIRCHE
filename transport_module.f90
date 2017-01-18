@@ -41,7 +41,7 @@
 
             do i = 1-mbc, mx+mbc
                 do j = 1-mbc, my+mbc
-                    rhom(i,j) = rho + c(i,j)*(rhos-rho)
+                    rhom(i,j) = rho + ctotal(i,j)*(rhos-rho)
                 enddo
             enddo
 
@@ -68,8 +68,9 @@
             !local
 
             integer :: i,j
-            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   vmag2,hloc,Dmm,zon,a2,ustarc,ustarcrit,taub,taucrit,Tstar,delb,zos,rhom
-            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: frc,ub_cr,us_cr1,us_cr2
+            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   vmag2,hloc,Dmm,zon,a2,ustarc,ustarcrit,taub,taucrit,&
+                                                                        Tstar,delb,zos,rhom
+            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: frc,us_cr1,us_cr2
             Real(kind=Prec) :: a1,gammaWs
 
             !output
@@ -86,14 +87,17 @@
             !call crtical_velocity2(mbc,mx,my,h,u,v,ub_cr,us_cr1,us_cr2)
             !call crtical_velocity3(mbc,mx,my,h,u,v,ub_cr,us_cr1,us_cr2)
 
-            Dmm = meansize(D,pbbed(:,:,1,:),mx,my,mbc,gmax)
+            !call meansize(mx,my,mbc,gmax,Dmm)
+
+            !Dmm = meansize(D,pbbed(:,:,1,:),mx,my,mbc,gmax)
             zon = Dmm/30.0
             a1 = 0.68
             a2 = 0.0204*(log(Dmm*1000))**2.0+0.0220*log(Dmm*1000)+0.0709
             do i = 1-mbc, mx+mbc
                 do j = 1-mbc, my+mbc
                     ustarc(i,j) = sqrt(g*m0**2.0*vmag2(i,j)/((rhom(i,j)-rho)*Dmm(i,j)*hloc(i,j)**(1.0/3.0)))
-                    ustarcrit(i,j) = sqrt(g*m0**2.0*ub_cr(i,j,int(gmax/2.0+1.0))**2.0/((rhom(i,j)-rho)*Dmm(i,j)*hloc(i,j)**(1.0/3.0)))
+                    ustarcrit(i,j) = sqrt(g*m0**2.0*ub_cr(i,j,int(gmax/2.0+1.0))**2.0/ &
+                                    ((rhom(i,j)-rho)*Dmm(i,j)*hloc(i,j)**(1.0/3.0)))
                 enddo
             enddo
             taub = rho*ustarc**2.0
@@ -112,27 +116,59 @@
         !This function is used to caculate mean grain size
         !
         !*******************************************************************
-        function meansize(D,fr,mx,my,mbc,gmax)
+        subroutine meansize(mx,my,mbc,gmax,Dmm)
 
-            implicit none
+            use sediment_module, only: hcr,D,g,m0,rhos,rho,pbbed
+            use Set_Precision, only: Prec
 
-            integer :: mx,my,mbc,gmax
+            ! argument
+            integer, intent(in) :: mbc,mx,my,gmax
 
-            Real(kind=Prec), Dimension(gmax) :: D
-            Real(kind=Prec), Dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: fr
-            Real(kind=Prec), Dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: meansize
+            !local
+
             integer :: i,j,k
+            !Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   Dt
 
-            meansize = 0.0
+            !output
+            Real(kind=Prec),intent(out),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: Dmm
+
+
+            Dmm = 0.0
+
+            !print *, gmax
 
             do i = 1-mbc, mx+mbc
                 do j = 1-mbc, my+mbc
                     do k = 1, gmax
-                        meansize(i,j) = meansize(i,j)+D(k)*fr(i,j,k)
+                        Dmm(i,j) = Dmm(i,j)+D(k)*pbbed(i,j,1,k)
+                        !print *, i,j,k
                     enddo
                 enddo
             enddo
-        end function meansize
+        end subroutine meansize
+
+        !function meansize(D,fr,mx,my,mbc,gmax)
+
+         !   implicit none
+
+         !   integer :: mx,my,mbc,gmax
+
+         !   Real(kind=Prec), Dimension(gmax) :: D
+         !   Real(kind=Prec), Dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: fr
+         !   Real(kind=Prec), Dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: meansize
+         !   integer :: i,j,k
+
+        !  meansize = 0.0
+
+         !   do i = 1-mbc, mx+mbc
+         !       do j = 1-mbc, my+mbc
+         !           do k = 1, gmax
+         !               meansize(i,j) = meansize(i,j)+D(k)*fr(i,j,k)
+         !               print *, i,j,k
+         !           enddo
+         !       enddo
+         !   enddo
+        !end function meansize
 
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -156,7 +192,7 @@
             !local
             integer :: i,j,k
             Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::  ctotal,rhom,delta
-            Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Sster,c1,c2,wster,w,R,alpha
+            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Sster,c1,c2,wster,w,R,alpha
             Real(kind=Prec) :: Te,vis
 
             !output
@@ -204,7 +240,7 @@
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-        subroutine crtical_velocity1(mbc,mx,my,h,u,v,c,ub_cr,us_cr1,us_cr2)
+        subroutine crtical_velocity1(mbc,mx,my,h,u,v,c,z0,ub_cr,us_cr1,us_cr2)
 
             use sediment_module, only: rhos,rho,gmax,g,D,hcr,k0,m0,pbbed
             use Set_Precision, only: Prec
@@ -214,11 +250,12 @@
             ! argument
             integer, intent(in) :: mbc,mx,my
             real(kind=Prec), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc),u(1-mbc:mx+mbc,1-mbc:my+mbc) &
-                            ,v(1-mbc:mx+mbc,1-mbc:my+mbc),c(1-mbc:mx+mbc,1-mbc:my+mbc,gmax)
+                            ,v(1-mbc:mx+mbc,1-mbc:my+mbc),c(1-mbc:mx+mbc,1-mbc:my+mbc,gmax), &
+                            z0(1-mbc:mx+mbc,1-mbc:my+mbc)
 
             !local
             integer :: i,j,k
-            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: z0, rhom, delta, hloc
+            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: rhom,delta,hloc,Dmm
             Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ws,ub_crt, us_cr1t, us_cr2t, us_cr1s, us_cr2s
 
             !output
@@ -252,7 +289,9 @@
 
                         ! bed roughness
 
-                        call bedrough(mbc,mx,my,u,v,h,ub_crt,z0) ! Rough estimation
+                        !call bedrough(mbc,mx,my,u,v,h,c,ub_cr,z0) ! Rough estimation
+                        !call meansize(mx,my,mbc,gmax,Dmm)
+                        !z0 = Dmm/30.0
 
                         ! Use the law of the wall
 
@@ -275,7 +314,7 @@
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-        subroutine crtical_velocity2(mbc,mx,my,h,u,v,c,ub_cr,us_cr1,us_cr2)
+        subroutine crtical_velocity2(mbc,mx,my,h,u,v,c,z0,ub_cr,us_cr1,us_cr2)
 
             use sediment_module, only: rhos,rho,gmax,g,D,hcr,Trep,k0,m0,pbbed
             use Set_Precision, only: Prec
@@ -285,11 +324,12 @@
             ! argument
             integer, intent(in) :: mbc,mx,my
             real(kind=Prec), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc),u(1-mbc:mx+mbc,1-mbc:my+mbc) &
-                                    ,v(1-mbc:mx+mbc,1-mbc:my+mbc),c(1-mbc:mx+mbc,1-mbc:my+mbc,gmax)
+                                    ,v(1-mbc:mx+mbc,1-mbc:my+mbc),c(1-mbc:mx+mbc,1-mbc:my+mbc,gmax), &
+                                    z0(1-mbc:mx+mbc,1-mbc:my+mbc)
 
             !local
             integer :: i,j,k
-            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: z0, rhom, delta, hloc
+            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: rhom, delta, hloc
             Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ws,ub_crt, us_cr1t, us_cr2t, us_cr1s, us_cr2s
 
             !output
@@ -321,7 +361,7 @@
 
                         !bed roughness
 
-                        call bedrough(mbc,mx,my,u,v,h,z0)
+                        !call bedrough(mbc,mx,my,u,v,h,c,ub_cr,z0)
 
                         ! the law of the wall
                         us_cr1t(i,j,k) = us_cr1s(i,j,k)/k0*(log(h(i,j)/k0-(1-z0(i,j)/h(i,j))))
@@ -343,9 +383,9 @@
         ! Shield
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-        subroutine crtical_velocity3(mbc,mx,my,h,u,v,c,ub_cr,us_cr1,us_cr2)
+        subroutine crtical_velocity3(mbc,mx,my,h,u,v,c,z0,ub_cr,us_cr1,us_cr2)
 
-            use sediment_module, only: rhos,rho,gmax,g,D,hcr,Trep,k0,m0,g,NL,pbbed
+            use sediment_module, only: rhos,rho,gmax,g,D,hcr,Trep,k0,m0,g,pbbed,NL
             use Set_Precision, only: Prec
 
             implicit none
@@ -353,14 +393,15 @@
             ! argument
             integer, intent(in) :: mbc,mx,my
             real(kind=Prec), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc),u(1-mbc:mx+mbc,1-mbc:my+mbc) &
-                                ,v(1-mbc:mx+mbc,1-mbc:my+mbc),c(1-mbc:mx+mbc,1-mbc:my+mbc,gmax)
+                                ,v(1-mbc:mx+mbc,1-mbc:my+mbc),c(1-mbc:mx+mbc,1-mbc:my+mbc,gmax), &
+                                z0(1-mbc:mx+mbc,1-mbc:my+mbc)
 
             !local
             integer :: i,j,k,l
             Real(kind=Prec) :: vis, uscr, xr, yr
-            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: z0, rhom, gamma, Dmm
-            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ws, ub_crs, us_cr1s, us_cr2s &
-                                                        ub_crt, us_cr1t, us_cr2t, ub_cr, us_cr2, us_cr1
+            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: rhom, gamma, Dmm
+            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ws, ub_crs, us_cr1s, us_cr2s,&
+                                                        ub_crt, us_cr1t, us_cr2t
             Real(kind=Prec),dimension(NL) :: z,K_b,K_s1,K_s2,spd_b,spd_s1,spd_s2
             Real(kind=Prec),dimension(NL-1) :: spd_b_profile, spd_s1_profile, spd_s2_profile
 
@@ -379,8 +420,8 @@
             vis  = 0.1*1e-5
 
             ! bed roughness
-            Dmm = meansize(D,pbbed(:,:,1,:),mx,my,mbc,gmax)
-            z0 = Dmm/30.0
+            !call meansize(mx,my,mbc,gmax,Dmm)
+            !z0 = Dmm/30.0
 
             ! shield diagram
             do i = 1-mbc, mx+mbc
@@ -412,8 +453,8 @@
                             K_s1(l)=k0*us_cr1s(i,j,k)*z(l)*exp((-z(l)/h(i,j))-3.2*(z(l)/h(i,j))**2+2.13*(z(l)/h(i,j))**3.0)
                             K_s2(l)=k0*us_cr2s(i,j,k)*z(l)*exp((-z(l)/h(i,j))-3.2*(z(l)/h(i,j))**2+2.13*(z(l)/h(i,j))**3.0)
                             spd_b(l)=h(i,j)/NL*ub_crs(i,j,k)**2.0/K_b(l)
-                            spd_s1(l)=h(i,j)/NL*ub_cr1s(i,j,k)**2.0/K_s1(l)
-                            spd_s2(l)=h(i,j)/NL*ub_cr2s(i,j,k)**2.0/K_s2(l)
+                            spd_s1(l)=h(i,j)/NL*us_cr1s(i,j,k)**2.0/K_s1(l)
+                            spd_s2(l)=h(i,j)/NL*us_cr2s(i,j,k)**2.0/K_s2(l)
                         enddo
 
                         do l=1, NL-1
@@ -434,12 +475,12 @@
                     end do
                 end do
             end do
-        end subroutine critical_velocity3
+        end subroutine crtical_velocity3
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         ! Soulsby-VanRijn Method                                                             !
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        subroutine sb_vr(mbc,mx,my,u,v,h,c,Tsg,ceqbg,ceqsg)
+        subroutine sb_vr(mbc,mx,my,u,v,h,c,z0,Tsg,ceqbg,ceqsg)
 
             use sediment_module, only: eps,rhos,rho,gmax,g,D,hcr,tsfac,Tsmin,cmax,sws
             use Set_Precision, only: Prec
@@ -449,11 +490,13 @@
 
             ! Arguments
             integer, intent(in) :: mbc,mx,my
-            real(kind=Prec), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc),c(1-mbc:mx+mbc,1-mbc:my+mbc,gmax)
+            real(kind=Prec), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),&
+                                    h(1-mbc:mx+mbc,1-mbc:my+mbc),c(1-mbc:mx+mbc,1-mbc:my+mbc,gmax), &
+                                    z0(1-mbc:mx+mbc,1-mbc:my+mbc)
 
             !local
             integer :: i,j,k
-            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: wet,rhom,delta,urms,vmg,urms2,hloc,z0,Asb,Ass,term1,Cd
+            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: wet,rhom,delta,urms,vmg,urms2,hloc,Asb,Ass,term1,Cd
             Real(kind=Prec) :: vis,perc
             Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: dster,ws,ub_cr,us_cr1,us_cr2,Ts,term2,ceqb,ceqs,ceq
 
@@ -467,13 +510,15 @@
 
             ! density correction
 
+
+
             call density(mbc,mx,my,c,rhom)
 
             call settling_velocity(mbc,mx,my,c,ws) !settling velocity
 
             ! calculate threshold velocity
 
-            call crtical_velocity1(mbc,mx,my,h,u,v,ub_cr,us_cr1,us_cr2)
+            call crtical_velocity1(mbc,mx,my,h,u,v,c,z0,ub_cr,us_cr1,us_cr2)
 
             !call crtical_velocity3(mbc,mx,my,h,u,v,ub_cr,us_cr1,us_cr2)
 
@@ -508,7 +553,8 @@
 
             ! bed roughness
 
-            call bedrough(mbc,mx,my,u,v,h,c,ub_cr,z0)
+            !call bedrough(mbc,mx,my,u,v,h,c,ub_cr,z0)
+            !call meansize(mx,my,mbc,gmax,Dmm)
 
             do k = 1, gmax
                 ! drag coefficient
@@ -530,19 +576,19 @@
                     do i=1-mbc,mx+mbc
                         if(term1(i,j)>ub_cr(i,j,k) .and. term1(i,j)<us_cr1(i,j,k) .and. hloc(i,j)>eps) then
                             term2(i,j,k)=(term1(i,j)-ub_cr(i,j,k))**2.40
-                            ceqb(i,j,k) = min(Asb(i,j)*term2(i,j)/hloc(i,j),cmax/gmax)
+                            ceqb(i,j,k) = min(Asb(i,j)*term2(i,j,k)/hloc(i,j),cmax/gmax)
                             ceqs(i,j,k) = 0.0
                             ceq(i,j,k) = ceqb(i,j,k)
                         endif
                         if(term1(i,j)>us_cr2(i,j,k) .and. hloc(i,j)>eps) then
                             term2(i,j,k)=(term1(i,j)-us_cr1(i,j,k))**2.40
-                            ceqs(i,j,k) = min(Ass(i,j)*term2(i,j)/hloc(i,j),cmax/gmax)
+                            ceqs(i,j,k) = min(Ass(i,j)*term2(i,j,k)/hloc(i,j),cmax/gmax)
                             ceqb(i,j,k) = 0.0
                             ceq(i,j,k) = ceqs(i,j,k)
                         endif
-                        if (term1(i,j)>ub_cr1(i,j,k) .and. term1(i,j)<us_cr2(i,j,k) .and. hloc(i,j)>eps) then
+                        if (term1(i,j)>ub_cr(i,j,k) .and. term1(i,j)<us_cr2(i,j,k) .and. hloc(i,j)>eps) then
                             term2(i,j,k)=(term1(i,j)-us_cr1(i,j,k))**2.40
-                            ceq(i,j,k) = (Ass(i,j)+Asb(i,j))*term2(i,j)/hloc(i,j)
+                            ceq(i,j,k) = (Ass(i,j)+Asb(i,j))*term2(i,j,k)/hloc(i,j)
                             perc = term1(i,j)/Us_cr2(i,j,k)
                             ceqb(i,j,k) = perc*min(ceq(i,j,k),cmax/gmax/2.0)
                             ceqs(i,j,k) = (1-perc)*min(ceq(i,j,k),cmax/gmax/2.0)
@@ -563,7 +609,7 @@
     ! Van Thiel-Van Rijn Method                                                          !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-        subroutine vt_vr(mbc,mx,my,u,v,h,c,Tsg,ceqbg,ceqsg)
+        subroutine vt_vr(mbc,mx,my,u,v,h,c,z0,Tsg,ceqbg,ceqsg)
 
             use sediment_module, only: eps,rhos,rho,gmax,g,D,hcr,tsfac,Tsmin,cmax,sws
             use Set_Precision, only: Prec
@@ -573,8 +619,9 @@
 
             ! Arguments
             integer, intent(in) :: mbc,mx,my
-            real(kind=Prec), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc),c(1-mbc:mx+mbc,1-mbc:my+mbc,gmax)
-
+            real(kind=Prec), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),&
+                                        h(1-mbc:mx+mbc,1-mbc:my+mbc),c(1-mbc:mx+mbc,1-mbc:my+mbc,gmax), &
+                                    z0(1-mbc:mx+mbc,1-mbc:my+mbc)
             !local
             integer :: i,j,k
             Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: wet,rhom,delta,urms,vmg,urms2,hloc,Asb,Ass,term1,term2,term3
@@ -596,7 +643,7 @@
 
             ! calculate threshold velocity
 
-            call crtical_velocity2(mbc,mx,my,h,u,v,c,ub_cr,us_cr1,us_cr2)
+            call crtical_velocity2(mbc,mx,my,h,u,v,c,z0,ub_cr,us_cr1,us_cr2)
 
             !call crtical_velocity3(mbc,mx,my,h,u,v,ub_cr,us_cr1,us_cr2)
 
@@ -675,7 +722,8 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-        subroutine transus(mbc,mx,my,dx,dy,time,u,v,h,dt,cut,cubt,cvt,cvbt,ccgt,ccbgt,Susgt,Subgt,Svbgt,Svsgt,ero1,ero2,depo_ex1,depo_ex2)
+        subroutine transus(mbc,mx,my,dx,dy,time,u,v,h,dt,cut,cubt,cvt,cvbt,ccgt,ccbgt,Susgt,Subgt,Svbgt,Svsgt,&
+                            ero1,ero2,depo_ex1,depo_ex2)
 
             use flux, only: Flux_vector
             use sediment_module, only: trim,gmax,morfac,por,D,thetanum,cmax,lmax,eps,facDC,nuh,nuhfac,rho,thick,method
@@ -691,10 +739,10 @@
             !local
 
             integer :: i,j,k
-            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   vmag2,hold,DR,Dc,wet,dzbdx, dzbdy, &
-                                                                        pbbedu,pbbedv,dzbdy!hold?
-            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: frc,fac,ero1,ero2,depo_ex1,depo_ex2, &
-                                                                        cc,ccb,dcsdy,dcbdy,dcsdx,dcbdx，Tsg
+            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   vmag2,hold,DR,Dc,wet,dzbdx,dzbdy, &
+                                                                        pbbedu,pbbedv,z0!hold?
+            Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: frc,fac,c, &
+                                                                        cc,ccb,dcsdy,dcbdy,dcsdx,dcbdx,Tsg
             Real(kind=Prec) :: exp_ero,facsl
 
             !out
@@ -722,11 +770,13 @@
             exp_ero = 0.0
             facsl = 1.6
 
+            call bedrough(mbc,mx,my,u,v,h,c,ub_cr,z0)
+
             ! calculate equibrium sediment concentration
             if (trim=='soulsby_vanrijn') then           ! Soulsby van Rijn
-                call sb_vr(mbc,mx,my,u,v,h,c,Tsg,ceqbg,ceqsg)
+                call sb_vr(mbc,mx,my,u,v,h,c,z0,Tsg,ceqbg,ceqsg)
             elseif (trim=='vanthiel_vanrijn') then       ! Van Thiel de Vries & Reniers 2008
-                call vt_vr(mbc,mx,my,u,v,h,c,Tsg,ceqbg,ceqsg)
+                call vt_vr(mbc,mx,my,u,v,h,c,z0,Tsg,ceqbg,ceqsg)
             end if
 
             ! mark water cover area
@@ -807,7 +857,6 @@
                 Sus = 0.0
                 Sub = 0.0
 
-
                 ! maybe move to the end
                 if (method=='Van_leer') then           ! Van leer
                     call Flux_vector(mbc,mx,my,u,v,h,cc,ccb,Sus,Sub,Svs,Svb)
@@ -816,9 +865,10 @@
                         do i=1-mbc,mx+mbc
                             ! suspended load
                             Sus(i,j,k)=(cut(i,j,k)*u(i,j)*h(i,j)-Dc(i,j)*h(i,j)*dcsdx(i,j,k) &
-                                    -facsl*cut(i,j,k)*sqrt(vmag2(i,j))*h(i,j)*dzbdx(i,j,k))*wet(i,j)   !No bed slope term in suspended transport?
+                                    -facsl*cut(i,j,k)*sqrt(vmag2(i,j))*h(i,j)*dzbdx(i,j))*wet(i,j)   !No bed slope term in suspended transport?
                             ! bed load
-                            Sub(i,j,k)=(cubt(i,j,k)*u(i,j)*h(i,j)-facsl*cubt(i,j,k)*sqrt(vmag2(i,j))*h(i,j)*dzbdx(i,j,k))*wet(i,j)
+                            Sub(i,j,k)=(cubt(i,j,k)*u(i,j)*h(i,j)-facsl*cubt(i,j,k)*sqrt(vmag2(i,j))&
+                                    *h(i,j)*dzbdx(i,j))*wet(i,j)
                         enddo
                     enddo
                 end if
