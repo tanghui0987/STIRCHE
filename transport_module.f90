@@ -87,7 +87,7 @@
             !call crtical_velocity2(mbc,mx,my,h,u,v,ub_cr,us_cr1,us_cr2)
             !call crtical_velocity3(mbc,mx,my,h,u,v,ub_cr,us_cr1,us_cr2)
 
-            !call meansize(mx,my,mbc,gmax,Dmm)
+            call meansize(mx,my,mbc,gmax,Dmm)
 
             !Dmm = meansize(D,pbbed(:,:,1,:),mx,my,mbc,gmax)
             zon = Dmm/30.0
@@ -111,11 +111,10 @@
             zos = gammaWs*delb
             z0 = zon+zos
         end subroutine bedrough
-        !*******************************************************************
-        !
-        !This function is used to caculate mean grain size
-        !
-        !*******************************************************************
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! This part is used to calculate mean grain-size                                     !
+        !                                                                                    !
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         subroutine meansize(mx,my,mbc,gmax,Dmm)
 
             use sediment_module, only: hcr,D,g,m0,rhos,rho,pbbed
@@ -209,12 +208,12 @@
             call density(mbc,mx,my,c,rhom)
 
             delta  = (rhom-rho)/rho
+            Te    = 20.0
+            vis  = 0.1*1e-5 ! Van rijn, 1993
 
             do i =1-mbc, mx+mbc
                 do j = 1-mbc, my+mbc
                     do k = 1, gmax
-                        Te    = 20.0
-                        vis  = 0.1*1e-5 ! Van rijn, 1993
                         Sster(i,j,k) = D(k)/(4*vis)*sqrt(delta(i,j)*g*D(k))
                         c1(i,j,k)    = 1.06*tanh(0.064*Sster(i,j,k)*exp(-7.5/Sster(i,j,k)**2.0))
                         c2(i,j,k)    = 0.220*tanh(2.34*Sster(i,j,k)**(-1.180)*exp(-0.0064*Sster(i,j,k)**2.0))
@@ -275,7 +274,7 @@
 
                         ! only sand for this method
                         if (D(k) <= 0.0005) then
-                            ub_crt(i,j,k) = 0.19*D(k)**0.1*dlog10(4*hloc(i,j)/D(k))
+                            ub_crt(i,j,k) = 0.19*D(k)**0.1*dlog10(4.0*hloc(i,j)/D(k))
                         elseif (D(k) > 0.0005 .AND. D(k) <= 0.002) then
                             ub_crt(i,j,k) = 8.5*D(k)**0.6*dlog10(4.0*hloc(i,j)/D(k))
                         else
@@ -422,13 +421,12 @@
             ! bed roughness
             !call meansize(mx,my,mbc,gmax,Dmm)
             !z0 = Dmm/30.0
-
             ! shield diagram
             do i = 1-mbc, mx+mbc
                 do j = 1-mbc, my+mbc
                     do k = 1, gmax
+                        uscr=0.00001
                         do l = 1, 20
-                            uscr=0.00001
                             xr=uscr*D(k)/vis
                             yr=0.15*xr**(-1.0)+0.05*exp(-8.0*xr**(-0.9))
                             uscr=sqrt(D(k)*gamma(i,j)*yr/rho)
@@ -450,8 +448,8 @@
                         do l= 1, NL
                             z(l) = z0(i,j) + l*h(i,j)/NL
                             K_b(l)=k0*ub_crs(i,j,k)*z(l)*exp((-z(l)/h(i,j))-3.2*(z(l)/h(i,j))**2.0+2.13*(z(l)/h(i,j))**3.0)
-                            K_s1(l)=k0*us_cr1s(i,j,k)*z(l)*exp((-z(l)/h(i,j))-3.2*(z(l)/h(i,j))**2+2.13*(z(l)/h(i,j))**3.0)
-                            K_s2(l)=k0*us_cr2s(i,j,k)*z(l)*exp((-z(l)/h(i,j))-3.2*(z(l)/h(i,j))**2+2.13*(z(l)/h(i,j))**3.0)
+                            K_s1(l)=k0*us_cr1s(i,j,k)*z(l)*exp((-z(l)/h(i,j))-3.2*(z(l)/h(i,j))**2.0+2.13*(z(l)/h(i,j))**3.0)
+                            K_s2(l)=k0*us_cr2s(i,j,k)*z(l)*exp((-z(l)/h(i,j))-3.2*(z(l)/h(i,j))**2.0+2.13*(z(l)/h(i,j))**3.0)
                             spd_b(l)=h(i,j)/NL*ub_crs(i,j,k)**2.0/K_b(l)
                             spd_s1(l)=h(i,j)/NL*us_cr1s(i,j,k)**2.0/K_s1(l)
                             spd_s2(l)=h(i,j)/NL*us_cr2s(i,j,k)**2.0/K_s2(l)
@@ -510,9 +508,9 @@
 
             ! density correction
 
-
-
             call density(mbc,mx,my,c,rhom)
+
+            ! settling velocity
 
             call settling_velocity(mbc,mx,my,c,ws) !settling velocity
 
@@ -537,7 +535,7 @@
                         dster(i,j,k)=(delta(i,j)*g/vis**2)**(1.0/3.0)*D(k)
 
                         !response time
-                        Ts(i,j,k) = tsfac*hloc(i,j)/ws(i,j,k)
+                        Ts(i,j,k) = tsfac*hloc(i,j)/ws(i,j,k) ! tsfac: constant
                         Tsg(i,j,k) = max(Ts(i,j,k),Tsmin)
                     enddo
                 enddo
@@ -638,6 +636,8 @@
             ! correct density
 
             call density(mbc,mx,my,c,rhom)
+
+            ! settling velocity
 
             call settling_velocity(mbc,mx,my,c,ws) !settling velocity
 
@@ -887,6 +887,8 @@
 
                 pbbedu(mx+mbc,:) = pbbedu(mx+mbc-1,:)
 
+
+                ! maybe don't need
                 do j=1-mbc,my+mbc
                     do i=1-mbc,mx+mbc
                         Sub(i,j,k) = pbbedu(i,j)*Sub(i,j,k) ! bed load are limited to the first sediment layer

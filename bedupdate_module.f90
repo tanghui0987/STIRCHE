@@ -214,9 +214,9 @@
                                 totalthick(i,j) = max(0.0,totalthick(i,j)-sum(dzg(i,j,:)))
                             else
                                 edg(i,j,:) = dzg(i,j,:)*(1.0-por)/dt
-                                !call update_fractions(i,j,totalthick(i,j),pbbed(i,j,:,:),sum(dzg(i,j,:)),&
-                                !       edg(i,j,:)/sum(edg(i,j,:)),dt,pb)
-                                !pbbed(i,j,:,:)=pb
+                                call update_fractions(i,j,totalthick(i,j),pbbed(i,j,:,:),sum(dzg(i,j,:)),&
+                                       edg(i,j,:)/sum(edg(i,j,:)),dt,pb)
+                                pbbed(i,j,:,:)=pb
                                 !edg(i,j,:) = dzg(i,j,:)*(1.0-por)/dt
                                 !if (totalthick(i,j)>thick) then
                                 !    totalnum(i,j) = nint(totalthick(i,j)/thick)
@@ -272,9 +272,9 @@
                             totalthick(i,j) = max(0.0,totalthick(i,j)-sum(dzg(i,j,:)))
                         else ! multiple fractions...
                             edg(i,j,:) = dzg(i,j,:)*(1.0-por)/dt
-                            !call update_fractions(i,j,totalthick(i,j),pbbed(i,j,:,:),sum(dzg(i,j,:)), &
-                            !        edg(i,j,:)/sum(edg(i,j,:)),dt,pb)
-                            !pbbed(i,j,:,:)=pb
+                            call update_fractions(i,j,totalthick(i,j),pbbed(i,j,:,:),sum(dzg(i,j,:)), &
+                                    edg(i,j,:)/sum(edg(i,j,:)),dt,pb)
+                            pbbed(i,j,:,:)=pb
                             !if (totalthick(i,j)>thick) then
                             !    totalnum(i,j) = nint(totalthick(i,j)/thick)
                             !    if (totalthick(i,j)>totalnum(i,j)*thick) then
@@ -288,11 +288,14 @@
                             !endif
                             !nd_var = totalnum(i,j)
                             !call update_fractions(i,j,dzbed(i,j,:),pbbed(i,j,:,:),edg(i,j,:),sum(dzg(i,j,:)),dt)
+                            do k=1,gmax
+                                pbbed(i,j,1,k) = pbbed(i,j,1,k)/sum(pbbed(i,j,1,:))
+                            end do
                         endif
                     enddo ! imax
                 endif !jmax = 1
             endif !t
-            !call avalanch(mbc,mx,my,dx,dy,dt,naux,aux,h,t)
+            call avalanch(mbc,mx,my,dx,dy,dt,naux,aux,h,t)
         end subroutine bed_update
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
