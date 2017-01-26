@@ -214,9 +214,11 @@
                                 totalthick(i,j) = max(0.0,totalthick(i,j)-sum(dzg(i,j,:)))
                             else
                                 edg(i,j,:) = dzg(i,j,:)*(1.0-por)/dt
-                                call update_fractions(i,j,totalthick(i,j),pbbed(i,j,:,:),sum(dzg(i,j,:)),&
-                                       edg(i,j,:)/sum(edg(i,j,:)),dt,pb)
-                                pbbed(i,j,:,:)=pb
+
+                                !print *, dzg(i,j,:)
+                                !call update_fractions(i,j,totalthick(i,j),pbbed(i,j,:,:),sum(dzg(i,j,:)),&
+                                !       edg(i,j,:)/sum(edg(i,j,:)),dt,pb)
+                                !pbbed(i,j,:,:)=pb
                                 !edg(i,j,:) = dzg(i,j,:)*(1.0-por)/dt
                                 !if (totalthick(i,j)>thick) then
                                 !    totalnum(i,j) = nint(totalthick(i,j)/thick)
@@ -238,6 +240,9 @@
                                 !        pbbed(i,j,1,k) = abs((pbbed(i,j,1,k)*sederold(i,j)+dzg(i,j,k))/sedero(i,j))
                                 !    end do
                                 !end if
+                                do k=1,gmax
+                                    pbbed(i,j,1,k) = (edg(i,j,k) + pbbed(i,j,1,k)*totalthick(i,j))/(edg(i,j,k)+totalthick(i,j))
+                                end do
                                 do k=1,gmax
                                     pbbed(i,j,1,k) = pbbed(i,j,1,k)/sum(pbbed(i,j,1,:))
                                 end do
@@ -430,10 +435,10 @@
                                 totalthick(i,je) = max(0.0,totalthick(i,je)-dzleft)
                                 h(i,jd)  = h(i,jd)+dzleft
                                 h(i,je)  = h(i,je)-dzleft
-                                !call update_fractions(i,jd,totalthick(i,j),pbbed(i,j,:,:),dzleft,pbbed(i,j,1,:),dt,pb)
-                                !pbbed(i,jd,:,:) = pb
-                                !call update_fractions(i,je,totalthick(i,j),pbbed(i,j,:,:),-dzleft,pbbed(i,j,1,:),dt,pb)
-                                !pbbed(i,je,:,:) = pb
+                                call update_fractions(i,jd,totalthick(i,j),pbbed(i,j,:,:),dzleft,pbbed(i,j,1,:),dt,pb)
+                                pbbed(i,jd,:,:) = pb
+                                call update_fractions(i,je,totalthick(i,j),pbbed(i,j,:,:),-dzleft,pbbed(i,j,1,:),dt,pb)
+                                pbbed(i,je,:,:) = pb
                             end if !dzmax
                         end do !imax
                     end do !jmax
